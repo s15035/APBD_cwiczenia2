@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using System.Xml.Serialization;
 
 namespace apbd_cw2
@@ -10,23 +11,26 @@ namespace apbd_cw2
     {
         public static void Main(string[] args)
         {
-            string csvPath; 
+            string csvPath;
             string xmlPath;
-            //string format;
+            //string jsonPath;
+            string format;
             int argsLen = args.Length;
-            
-            if (argsLen < 3)
+
+            if (argsLen != 3)
             {
                 csvPath = @"data.csv";
                 xmlPath = @"result.xml";
-                //format = "xml";
+                //jsonPath = @"result.json";
+                format = "xml";
             }
             else
             {
                 csvPath = args[0];
                 xmlPath = args[1];
-                //format = args[2];
-            } 
+                //jsonPath = args[1];
+                format = args[2];
+            }
 
             if (File.Exists(xmlPath))
             {
@@ -37,46 +41,83 @@ namespace apbd_cw2
             {
                 FileStream writer = new FileStream(xmlPath, FileMode.Create);
 
-                using (var stream = new StreamReader(File.OpenRead(csvPath)))
+                using var stream = new StreamReader(File.OpenRead(csvPath));
+                string line = null;
+                while ((line = stream.ReadLine()) != null)
                 {
-                    string line = null;
-                    while ((line = stream.ReadLine()) != null)
+                    string[] student = line.Split(',');
+                    if(student.Length != 9)
                     {
-                        string[] student = line.Split(',');
-                        var st = new Student
-                        {
-                            fName = student[0],
-                            lName = student[1],
-                            name = student[2],
-                            mode = student[3],
-                            indexNumber = student[4],
-                            birthdate = student[5],
-                            email = student[6],
-                            mothersName = student[7],
-                            fathersName = student[8]
-                        };
+                        return;
+                    }
 
-                        XmlSerializer serializer = new XmlSerializer(typeof(List<Student>));
-                        var list = new List<Student>();
-                        list.Add(new Student
-                        {
-                            fName = student[0],
-                            lName = student[1],
-                            name = student[2],
-                            mode = student[3],
-                            indexNumber = student[4],
-                            birthdate = student[5],
-                            email = student[6],
-                            mothersName = student[7],
-                            fathersName = student[8]
-                        }
-                        );
+                    var st = new Student
+                    {
+                        FirstName = student[0],
+                        LastName = student[1],
+                        StudiesName = student[2],
+                        StudiesMode = student[3],
+                        IndexNumber = student[4],
+                        Birthdate = student[5],
+                        Email = student[6],
+                        MothersName = student[7],
+                        FathersName = student[8]
+                    };
 
-                        serializer.Serialize(writer, list);
-                     
-                        /*  Fragment kodu tylko do testow
-                         * 
-                         * Console.WriteLine(st.fName + ", " + st.lName + ", " + st.name + ", " + st.mode + ", " + st.indexNumber + ", " + st.birthdate + ", " + st.email + ", " + st.mothersName + ", " + st.fathersName);*/
+                    switch (format)
+                    {
+                        case "":
+                        case "xml":
+                            {
+                                XmlSerializer serializer = new XmlSerializer(typeof(List<Student>), new XmlRootAttribute("uczelnia"));
+                                var xmlList = new List<Student>();
+                                xmlList.Add(new Student
+                                {
+                                    FirstName = student[0],
+                                    LastName = student[1],
+                                    study = new Study
+                                    {
+                                        StudiesName = student[2],
+                                        StudiesMode = student[3]
+                                    },
+                                    IndexNumber = student[4],
+                                    Birthdate = student[5],
+                                    Email = student[6],
+                                    MothersName = student[7],
+                                    FathersName = student[8]
+                                }
+                                );
+
+                                serializer.Serialize(writer, xmlList);
+                                break;
+                            }
+                        case "json":
+                            {
+                                var jsonList = new List<Student>()
+                                {
+                                    new Student
+                                    {
+                                        FirstName = student[0],
+                                        LastName = student[1],
+                                        study = new Study
+                                        {
+                                            StudiesName = student[2],
+                                            StudiesMode = student[3]
+                                        },
+                                        IndexNumber = student[4],
+                                        Birthdate = student[5],
+                                        Email = student[6],
+                                        MothersName = student[7],
+                                        FathersName = student[8]
+                                    }
+                                };
+
+                                var jsonString = JsonSerializer.Serialize(jsonList);
+                                File.WriteAllText("result.json", jsonString);
+                                break;
+                            }
+                        default:
+                            throw new ArgumentException("Wprowadzono bledny format danych");
                     }
                 }
             }
